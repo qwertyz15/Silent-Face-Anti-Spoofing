@@ -1,4 +1,3 @@
-[中文版](README.md)|**English Version**  
 ![Silent-Face-Anti-Spoofing](https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/blob/master/images/logo.jpg)  
 # Silent-Face-Anti-Spoofing 
 
@@ -91,7 +90,62 @@ cd Silent-Face-Anti-Spoofing
 		└── ...
         ├── 1_80x80
         └── ...
-```  
+``` 
+
+# Generate Cropped Dataset
+
+`generate_dataset.py` is a script designed to process images in a specified directory, crop them according to given dimensions, and save the cropped images in a structured dataset format.
+
+## File Structure
+
+The script processes images and organizes them into a dataset with the following structure:
+```
+raw_dataset
+├── 0
+│ ├── aaa.png
+│ ├── bbb.png
+│ └── ...
+├── 1
+│ ├── ddd.png
+│ ├── eee.png
+│ └── ...
+└── 2
+├── ggg.png
+├── hhh.png
+└── ...
+```
+In this structure, each subfolder (0, 1, 2, ...) represents a different category or class, and contains the corresponding cropped images.
+
+## Usage
+
+To use `generate_dataset.py`, you need to provide several command line arguments:
+
+- `--input_dir`: The directory containing the images to be processed.
+- `--save_dir`: The directory where the cropped images will be saved.
+- `--device_id`: (Optional) The GPU device ID if using GPU acceleration.
+- `--h_input`: (Optional) Height of the cropped image. Default is 80.
+- `--w_input`: (Optional) Width of the cropped image. Default is 80.
+- `--scale`: (Optional) Scale factor for bounding box adjustment.
+
+### Running the Script
+
+Navigate to the directory containing `generate_dataset.py` and run the following command in your terminal:
+
+```bash
+python3 generate_dataset.py --input_dir <path_to_input_directory> --save_dir <path_to_save_directory> [--device_id <device_id>] [--h_input <height>] [--w_input <width>] [--scale <scale_factor>]
+```
+
+Replace `path_to_input_directory`, `path_to_save_directory`, `device_id`, `height`, `width`, and `scale_factor` with your desired values.
+
+### Example 
+
+```bash
+python3 generate_dataset.py --input_dir "./images" --save_dir "./dataset" --device_id 0 --h_input 80 --w_input 80 --scale 2.7
+```
+
+This example will process images from the `./images` directory, crop them with the specified dimensions, and save them in the `./dataset directory`, using device ID `0` and a scale factor of `2.7` for bounding box adjustment.
+
+ 
 ### Train
 ```
 python train.py --device_ids 0  --patch_info your_patch
