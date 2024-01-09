@@ -49,6 +49,46 @@ class Detection:
         bbox = [int(left), int(top), int(right-left+1), int(bottom-top+1)]
         return bbox
 
+    def get_bboxes(self, images):
+        bboxes = []
+        for img in images:
+            if img.size == 0:
+                print("Empty image array encountered.")
+                continue
+            height, width = img.shape[:2]
+            aspect_ratio = width / height
+            resized_img = img
+            if img.shape[1] * img.shape[0] >= 192 * 192:
+                resized_img = cv2.resize(img, (int(192 * math.sqrt(aspect_ratio)), int(192 / math.sqrt(aspect_ratio))), interpolation=cv2.INTER_LINEAR)
+            
+            blob = cv2.dnn.blobFromImage(resized_img, 1, mean=(104, 117, 123))
+            self.detector.setInput(blob, 'data')
+            out = self.detector.forward('detection_out').squeeze()
+            max_conf_index = np.argmax(out[:, 2])
+            left, top, right, bottom = out[max_conf_index, 3]*width, out[max_conf_index, 4]*height, out[max_conf_index, 5]*width, out[max_conf_index, 6]*height
+            bbox = [int(left), int(top), int(right-left+1), int(bottom-top+1)]
+            bboxes.append(bbox)
+        return bboxes
+
+    # def get_bboxes(self, imgs):
+    #     bboxes = []
+    #     for img in imgs:
+    #         height, width = img.shape[:2]
+    #         aspect_ratio = width / height
+    #         if img.shape[1] * img.shape[0] >= 192 * 192:
+    #             resized_img = cv2.resize(img, (int(192 * math.sqrt(aspect_ratio)), int(192 / math.sqrt(aspect_ratio))), interpolation=cv2.INTER_LINEAR)
+    #         else:
+    #             resized_img = img
+
+    #         blob = cv2.dnn.blobFromImage(resized_img, 1, mean=(104, 117, 123))
+    #         self.detector.setInput(blob, 'data')
+    #         out = self.detector.forward('detection_out').squeeze()
+    #         max_conf_index = np.argmax(out[:, 2])
+    #         left, top, right, bottom = out[max_conf_index, 3]*width, out[max_conf_index, 4]*height, \
+    #                                    out[max_conf_index, 5]*width, out[max_conf_index, 6]*height
+    #         bbox = [int(left), int(top), int(right-left+1), int(bottom-top+1)]
+    #         bboxes.append(bbox)
+    #     return bboxes
 
 class AntiSpoofPredict(Detection):
     def __init__(self, device_id):
@@ -91,7 +131,18 @@ class AntiSpoofPredict(Detection):
             result = F.softmax(result).cpu().numpy()
         return result
 
-
+    def predict_batch(self, img_batch, model_path):
+        test_transform = trans.Compose([
+            trans.ToTensor(),
+        ])
+        img_batch = torch.stack([test_transform(img) for img in img_batch])
+        img_batch = img_batch.to(self.device)
+        self._load_model(model_path)
+        self.model.eval()
+        with torch.no_grad():
+            result = self.model.forward(img_batch)
+            result = F.softmax(result, dim=1).cpu().numpy()
+        return result
 
 
 

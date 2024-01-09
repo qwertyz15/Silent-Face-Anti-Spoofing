@@ -11,9 +11,9 @@ from torch.nn import CrossEntropyLoss, MSELoss
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
-from src.utility import get_time
+from src.utility import get_time, extract_model_type
 from src.model_lib.MultiFTNet import MultiFTNet
-from src.data_io.dataset_loader import get_train_loader
+from src.data_io.dataset_loader import get_train_loader, get_val_loader
 
 
 class TrainMain:
@@ -24,6 +24,7 @@ class TrainMain:
         self.step = 0
         self.start_epoch = 0
         self.train_loader = get_train_loader(self.conf)
+        self.val_loader = get_val_loader(self.conf) 
 
     def train_model(self):
         self._init_model_param()
@@ -45,61 +46,87 @@ class TrainMain:
         print("epochs: ", self.conf.epochs)
         print("milestones: ", self.conf.milestones)
 
-    def _train_stage(self):
-        self.model.train()
-        running_loss = 0.
-        running_acc = 0.
-        running_loss_cls = 0.
-        running_loss_ft = 0.
-        is_first = True
-        for e in range(self.start_epoch, self.conf.epochs):
-            if is_first:
-                self.writer = SummaryWriter(self.conf.log_path)
-                is_first = False
-            print('epoch {} started'.format(e))
-            print("lr: ", self.schedule_lr.get_lr())
 
+    def _train_stage(self):
+        self.writer = SummaryWriter(self.conf.log_path)
+        for e in range(self.start_epoch, self.conf.epochs):
+            print(f"Epoch {e} started")
+
+            # Training phase
+            self.model.train()
+            running_loss = 0.
+            running_acc = 0.
             for sample, ft_sample, target in tqdm(iter(self.train_loader)):
                 imgs = [sample, ft_sample]
                 labels = target
-
-                loss, acc, loss_cls, loss_ft = self._train_batch_data(imgs, labels)
-                running_loss_cls += loss_cls
-                running_loss_ft += loss_ft
+                loss, acc, _, _ = self._train_batch_data(imgs, labels)
                 running_loss += loss
                 running_acc += acc
 
-                self.step += 1
+            train_loss = running_loss / len(self.train_loader)
+            train_acc = running_acc / len(self.train_loader)
 
-                if self.step % self.board_loss_every == 0 and self.step != 0:
-                    loss_board = running_loss / self.board_loss_every
-                    self.writer.add_scalar(
-                        'Training/Loss', loss_board, self.step)
-                    acc_board = running_acc / self.board_loss_every
-                    self.writer.add_scalar(
-                        'Training/Acc', acc_board, self.step)
-                    lr = self.optimizer.param_groups[0]['lr']
-                    self.writer.add_scalar(
-                        'Training/Learning_rate', lr, self.step)
-                    loss_cls_board = running_loss_cls / self.board_loss_every
-                    self.writer.add_scalar(
-                        'Training/Loss_cls', loss_cls_board, self.step)
-                    loss_ft_board = running_loss_ft / self.board_loss_every
-                    self.writer.add_scalar(
-                        'Training/Loss_ft', loss_ft_board, self.step)
+            # Convert to standard Python number if necessary
+            if isinstance(train_loss, torch.Tensor):
+                train_loss = train_loss.item()
+            if isinstance(train_acc, torch.Tensor):
+                train_acc = train_acc.item()
 
-                    running_loss = 0.
-                    running_acc = 0.
-                    running_loss_cls = 0.
-                    running_loss_ft = 0.
-                if self.step % self.save_every == 0 and self.step != 0:
-                    time_stamp = get_time()
-                    self._save_state(time_stamp, extra=self.conf.job_name)
+            print(f"Train Loss: {train_loss:.4f}, Train Accuracy: {train_acc:.4f}")
+
+            # Validation phase
+            self.model.eval()  # Set the model to evaluation mode
+            running_val_loss = 0.0
+            running_val_accuracy = 0.0
+            with torch.no_grad():  # Disable gradient computation
+                for val_sample, val_ft_sample, val_target in tqdm(iter(self.val_loader)):
+                    val_imgs = [val_sample, val_ft_sample]
+                    val_labels = val_target
+                    val_loss, val_accuracy = self._validate_batch_data(val_imgs, val_labels)
+                    running_val_loss += val_loss
+                    running_val_accuracy += val_accuracy
+
+            val_loss = running_val_loss / len(self.val_loader)
+            val_accuracy = running_val_accuracy / len(self.val_loader)
+
+            # Convert to standard Python number if necessary
+            if isinstance(val_loss, torch.Tensor):
+                val_loss = val_loss.item()
+            if isinstance(val_accuracy, torch.Tensor):
+                val_accuracy = val_accuracy.item()
+
+            print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+
+            # Update learning rate and save model
             self.schedule_lr.step()
+            lr = self.optimizer.param_groups[0]['lr']
+            print("Learning Rate: ", lr)
+            if self.conf.save_every and (e % self.conf.save_every == 0 or e == self.conf.epochs - 1):
+                time_stamp = get_time()
+                self._save_state(time_stamp, extra=self.conf.job_name)
 
-        time_stamp = get_time()
-        self._save_state(time_stamp, extra=self.conf.job_name)
         self.writer.close()
+
+    
+    def _validate_batch_data(self, imgs, labels):
+        # Move labels to the same device as the model
+        labels = labels.to(self.conf.device)
+
+        # Forward pass: compute predicted outputs by passing inputs to the model
+        outputs = self.model(imgs[0].to(self.conf.device))
+
+        # Calculate the batch's loss
+        # Assuming the outputs are logits and the labels are class indices
+        loss_cls = self.cls_criterion(outputs, labels)
+
+        # Calculate the batch's accuracy
+        acc = self._get_accuracy(outputs, labels)[0]
+
+        # Return loss and accuracy
+        return loss_cls.item(), acc
+
+
+
 
     def _train_batch_data(self, imgs, labels):
         self.optimizer.zero_grad()
@@ -115,16 +142,41 @@ class TrainMain:
         self.optimizer.step()
         return loss.item(), acc, loss_cls.item(), loss_fea.item()
 
+
+
     def _define_network(self):
         param = {
             'num_classes': self.conf.num_classes,
             'img_channel': self.conf.input_channel,
             'embedding_size': self.conf.embedding_size,
-            'conv6_kernel': self.conf.kernel_size}
+            'conv6_kernel': self.conf.kernel_size
+        }
+
+        pretrained_model_path = self.conf.pretrained_model_path  # This should be set via argparse or similar
+        print(pretrained_model_path)
+
+        # Add model_type to param if a pretrained model path is provided
+        if pretrained_model_path:
+            model_type = extract_model_type(pretrained_model_path)
+            param['model_type'] = model_type
 
         model = MultiFTNet(**param).to(self.conf.device)
         model = torch.nn.DataParallel(model, self.conf.devices)
-        model.to(self.conf.device)
+
+        # Load pre-trained weights if available
+        if pretrained_model_path:
+            state_dict = torch.load(pretrained_model_path, map_location=self.conf.device)
+
+            # Adjust for DataParallel wrapper if necessary
+            if list(state_dict.keys())[0].startswith('module.'):
+                # Pretrained model was trained using DataParallel
+                pass
+            else:
+                # Pretrained model was not trained using DataParallel
+                state_dict = {'module.' + k: v for k, v in state_dict.items()}
+
+            model.load_state_dict(state_dict, strict=False)
+
         return model
 
     def _get_accuracy(self, output, target, topk=(1,)):
@@ -144,3 +196,6 @@ class TrainMain:
         save_path = self.conf.model_path
         torch.save(self.model.state_dict(), save_path + '/' +
                    ('{}_{}_model_iter-{}.pth'.format(time_stamp, extra, self.step)))
+                   
+                   
+                   

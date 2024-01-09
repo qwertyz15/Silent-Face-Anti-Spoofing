@@ -39,3 +39,19 @@ def parse_model_name(model_name):
 def make_if_not_exist(folder_path):
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
+
+def extract_model_type(model_path):
+    """
+    Extract the model type from the model file name.
+    """
+    basename = os.path.basename(model_path)
+    if 'V1SE' in basename:
+        return 'V1SE'
+    elif 'V2SE' in basename:
+        return 'V2SE'
+    elif 'V1' in basename:
+        return 'V1'
+    elif 'V2' in basename:
+        return 'V2'
+    else:
+        return 'Unknown'

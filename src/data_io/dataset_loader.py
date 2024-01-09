@@ -29,5 +29,20 @@ def get_train_loader(conf):
         batch_size=conf.batch_size,
         shuffle=True,
         pin_memory=True,
-        num_workers=16)
+        num_workers=12)
     return train_loader
+    
+def get_val_loader(conf, valpath=None):
+    val_transform = trans.Compose([
+        trans.ToPILImage(),
+        trans.ToTensor()
+    ])
+    root_path = valpath if valpath else '{}/{}'.format(conf.val_root_path, conf.patch_info)
+    valset = DatasetFolderFT(root_path, val_transform, None, conf.ft_width, conf.ft_height)
+    val_loader = DataLoader(
+        valset,
+        batch_size=conf.batch_size,
+        shuffle=False,
+        pin_memory=True,
+        num_workers=12)
+    return val_loader

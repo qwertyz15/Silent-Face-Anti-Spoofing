@@ -63,3 +63,13 @@ class CropImage:
                           left_top_x: right_bottom_x+1]
             dst_img = cv2.resize(img, (out_w, out_h))
         return dst_img
+        
+    def crop_batch(self, images, params):
+        cropped_images = []
+        for img, param in zip(images, params):
+            # Remove the 'org_img' key from param to prevent conflict
+            param = param.copy()  # Create a copy to avoid modifying the original dictionary
+            param.pop('org_img', None)  # Remove 'org_img' key if it exists
+            cropped_img = self.crop(org_img=img, **param)
+            cropped_images.append(cropped_img)
+        return cropped_images

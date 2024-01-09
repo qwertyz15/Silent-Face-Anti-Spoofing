@@ -17,10 +17,6 @@ from src.generate_patches import CropImage
 from src.utility import parse_model_name
 warnings.filterwarnings('ignore')
 
-
-SAMPLE_IMAGE_PATH = "./images/sample/"
-
-
 # 因为安卓端APK获取的视频流宽高比为3:4,为了与之一致，所以将宽高比限制为3:4
 def check_image(image):
     height, width, channel = image.shape
@@ -34,7 +30,7 @@ def check_image(image):
 def test(image_name, model_dir, device_id):
     model_test = AntiSpoofPredict(device_id)
     image_cropper = CropImage()
-    image = cv2.imread(SAMPLE_IMAGE_PATH + image_name)
+    image = cv2.imread(image_name)
     result = check_image(image)
     if result is False:
         return
@@ -42,8 +38,10 @@ def test(image_name, model_dir, device_id):
     prediction = np.zeros((1, 3))
     test_speed = 0
     # sum the prediction from single model's result
+    print(model_dir)
     for model_name in os.listdir(model_dir):
         h_input, w_input, model_type, scale = parse_model_name(model_name)
+        print(h_input, w_input, model_type, scale)
         param = {
             "org_img": image,
             "bbox": image_bbox,
@@ -55,9 +53,12 @@ def test(image_name, model_dir, device_id):
         if scale is None:
             param["crop"] = False
         img = image_cropper.crop(**param)
+        cv2.imwrite("img_cropped.jpg", img)
+        print(img.shape)
         start = time.time()
         prediction += model_test.predict(img, os.path.join(model_dir, model_name))
         test_speed += time.time()-start
+        print(test_speed)
 
     # draw result of prediction
     label = np.argmax(prediction)
@@ -84,7 +85,7 @@ def test(image_name, model_dir, device_id):
 
     format_ = os.path.splitext(image_name)[-1]
     result_image_name = image_name.replace(format_, "_result" + format_)
-    cv2.imwrite(SAMPLE_IMAGE_PATH + result_image_name, image)
+    cv2.imwrite(result_image_name, image)
 
 
 if __name__ == "__main__":
@@ -103,7 +104,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--image_name",
         type=str,
-        default="image_F1.jpg",
+        default="images/sample/image_F1.jpg",
         help="image used to test")
     args = parser.parse_args()
     test(args.image_name, args.model_dir, args.device_id)

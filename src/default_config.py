@@ -34,6 +34,7 @@ def get_default_config():
 
     # dataset
     conf.train_root_path = './datasets/rgb_image'
+    conf.val_root_path = './datasets/rgb_image_val'
 
     # save file path
     conf.snapshot_dir_path = './saved_logs/snapshot'
@@ -51,10 +52,12 @@ def get_default_config():
 def update_config(args, conf):
     conf.devices = args.devices
     conf.patch_info = args.patch_info
+    conf.pretrained_model_path = args.pretrained_model_path
     w_input, h_input = get_width_height(args.patch_info)
     conf.input_size = [h_input, w_input]
     conf.kernel_size = get_kernel(h_input, w_input)
     conf.device = "cuda:{}".format(conf.devices[0]) if torch.cuda.is_available() else "cpu"
+
 
     # resize fourier image size
     conf.ft_height = 2*conf.kernel_size[0]
