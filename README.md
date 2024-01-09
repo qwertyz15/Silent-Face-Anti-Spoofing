@@ -92,11 +92,11 @@ cd Silent-Face-Anti-Spoofing
         └── ...
 ``` 
 
-# Generate Cropped Dataset
+## Generate Cropped Dataset
 
 `generate_dataset.py` is a script designed to process images in a specified directory, crop them according to given dimensions, and save the cropped images in a structured dataset format.
 
-## File Structure
+### File Structure
 
 The script processes images and organizes them into a dataset with the following structure:
 ```
@@ -116,7 +116,7 @@ raw_dataset
 ```
 In this structure, each subfolder (0, 1, 2, ...) represents a different category or class, and contains the corresponding cropped images.
 
-## Usage
+### Usage
 
 To use `generate_dataset.py`, you need to provide several command line arguments:
 
@@ -127,7 +127,7 @@ To use `generate_dataset.py`, you need to provide several command line arguments
 - `--w_input`: (Optional) Width of the cropped image. Default is 80.
 - `--scale`: (Optional) Scale factor for bounding box adjustment.
 
-### Running the Script
+#### Running the Script
 
 Navigate to the directory containing `generate_dataset.py` and run the following command in your terminal:
 
@@ -137,7 +137,7 @@ python3 generate_dataset.py --input_dir <path_to_input_directory> --save_dir <pa
 
 Replace `path_to_input_directory`, `path_to_save_directory`, `device_id`, `height`, `width`, and `scale_factor` with your desired values.
 
-### Example 
+#### Example 
 
 ```bash
 python3 generate_dataset.py --input_dir "./images" --save_dir "./dataset" --device_id 0 --h_input 80 --w_input 80 --scale 2.7
