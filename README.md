@@ -146,10 +146,44 @@ python3 generate_dataset.py --input_dir "./images" --save_dir "./dataset" --devi
 This example will process images from the `./images` directory, crop them with the specified dimensions, and save them in the `./dataset directory`, using device ID `0` and a scale factor of `2.7` for bounding box adjustment.
 
  
-### Train
+## Silence-FAS Training Script
+
+The `train.py` script is designed for training models in the Silence-FAS project. It allows for customization of various parameters including GPU device selection, patch information, and the use of pretrained models.
+
+### Script Parameters
+
+The script accepts several command-line arguments to customize the training process:
+
+- `--device_ids`: Specifies the GPU device IDs to use for training. For example, "0,1,2,3" for using four GPUs.
+- `--patch_info`: Defines the patch information for training. Supported values include "org_1_80x60", "1_80x80", "2.7_80x80", "4_80x80".
+- `--pretrained_model_path`: Path to the pretrained model file if available. This is optional and can be left as `None` for training from scratch.
+
+### Usage
+
+To use `train.py`, navigate to the directory containing the script and run the following command in your terminal:
+
+```bash
+python3 train.py --device_ids <device_ids> --patch_info <patch_info> [--pretrained_model_path <path_to_pretrained_model>]
 ```
-python train.py --device_ids 0  --patch_info your_patch
-```  
+Replace `device_ids`, `patch_info`, and `path_to_pretrained_model` with your desired values.
+
+### Example
+1. **For Training from Scratch:** If you want to train a model from scratch (i.e., without using a pre-trained model), you simply omit the `--pretrained_model_path` argument or set it to None. This will initialize the model with random weights and the training process will start learning the features and weights entirely from your provided training data.
+
+	Example command for training from scratch:
+	```bash
+	python3 train.py --device_ids "0" --patch_info "1_80x80"
+	```
+2. **For Fine-Tuning:** If you want to fine-tune a model using a pre-trained model as a starting point, you should specify the path to the pre-trained model using the --pretrained_model_path argument. This allows the training process to start from the learned weights of an existing model, which can often lead to faster convergence and potentially better performance, especially when you have limited training data or are working on a similar task to the one the pre-trained model was originally used for.
+
+	Example command for fine-tuning:
+	```bash
+	python3 train.py --device_ids "0" --patch_info "1_80x80" --pretrained_model_path "/path/to/pretrained/model.pth"
+	```
+This example will initiate training using GPUs with IDs `0`, with patch information set to `1_80x80`, and using a pretrained model located at `/path/to/pretrained/model.pth`.
+
+In both cases, ensure the rest of the parameters (--device_ids, --patch_info, etc.) are set according to your training setup and data requirements.
+
 ### Test
  ./resources/anti_spoof_models Fusion model of in living detection  
  ./resources/detection_model Detector  
