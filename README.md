@@ -148,5 +148,7 @@ This repository contains scripts for testing and deploying models for spoof dete
 
 - For testing both Flask applications (`flask_app_pt.py` and `flask_app_onnx.py`).
   ```bash
-  python3 flask_client_main.py 
+  python3 flask_client_main.py --image_dir <image_dir> --url <url>
   ```
+  - `--image_dir`: Directory path containing the images to be processed.
+  - `--url`: URL of the Flask server where the images will be sent for processing.
