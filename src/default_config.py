@@ -28,7 +28,7 @@ def get_default_config():
     conf.batch_size = 1024
 
     # model
-    conf.num_classes = 3
+    conf.num_classes = 2
     conf.input_channel = 3
     conf.embedding_size = 128
 
@@ -44,7 +44,7 @@ def get_default_config():
     # tensorboard
     conf.board_loss_every = 10
     # save model/iter
-    conf.save_every = 30
+    conf.save_every = 1
 
     return conf
 

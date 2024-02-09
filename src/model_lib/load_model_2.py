@@ -1,6 +1,11 @@
 import torch
 from MiniFASNet import MiniFASNetV1SE  # Import the correct model class
 
+def print_model_weights(model):
+    for name, param in model.state_dict().items():
+        print(f"Layer: {name}")
+        print(f"Values: \n{param}\n") 
+
 def load_pretrained_model(model_path, device='cpu'):
     """
     Load a pre-trained MiniFASNetV1SE model from the specified path.
@@ -17,6 +22,7 @@ def load_pretrained_model(model_path, device='cpu'):
         state_dict = {k[7:]: v for k, v in state_dict.items()}
 
     model.load_state_dict(state_dict)
+    print_model_weights(model)
     model.eval()  # Set the model to evaluation mode
 
     return model

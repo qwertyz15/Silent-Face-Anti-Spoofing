@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import argparse
+import time
 from src.anti_spoof_predict import AntiSpoofPredict
 from src.generate_patches import CropImage
 from src.utility import parse_model_name
@@ -67,11 +68,23 @@ def load_images_from_folder(folder):
 #     return results
 
 def batch_test(image_folder, model_dir, device_id, batch_size):
+    
     model_test = AntiSpoofPredict(device_id)
     image_cropper = CropImage()
+
+    
     images, filenames = load_images_from_folder(image_folder)
     results = []
 
+    all_models = dict()
+    st1 = time.time()
+    for model_name in os.listdir(model_dir):
+        model_path = os.path.join(model_dir, model_name)
+        smodel = model_test._load_model(model_path)
+        smodel.eval()
+        all_models[model_name] = smodel
+    print(time.time() - st1)
+    st2 = time.time()
     for i in range(0, len(images), batch_size):
         batch = images[i:i+batch_size]
         batch_filenames = filenames[i:i+batch_size]
@@ -79,18 +92,21 @@ def batch_test(image_folder, model_dir, device_id, batch_size):
         bboxes = model_test.get_bboxes(batch)  # Get bboxes for batch
 
         for model_name in os.listdir(model_dir):
+            smodel = all_models[model_name]
             h_input, w_input, model_type, scale = parse_model_name(model_name)
             params = [{"org_img": img, "bbox": bbox, "scale": scale, "out_w": w_input, "out_h": h_input, "crop": True if scale is not None else False} for img, bbox in zip(batch, bboxes)]
             cropped_images = image_cropper.crop_batch(batch, params)
 
-            batch_predictions += model_test.predict_batch(cropped_images, os.path.join(model_dir, model_name))
+            # batch_predictions += model_test.predict_batch(cropped_images, os.path.join(model_dir, model_name))
+            batch_predictions += model_test.predict_batch(cropped_images, smodel)
+
 
         for j, prediction in enumerate(batch_predictions):
             label = np.argmax(prediction)
             value = prediction[label] / 2
             result = ("Real" if label == 1 else "Fake") + f" Score: {value:.2f}"
             results.append((batch_filenames[j], result))
-
+    print(time.time() - st2)
     return results
 
 if __name__ == "__main__":

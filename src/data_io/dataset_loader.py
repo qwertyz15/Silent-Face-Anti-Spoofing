@@ -37,6 +37,7 @@ def get_val_loader(conf, valpath=None):
         trans.ToPILImage(),
         trans.ToTensor()
     ])
+    print(conf.val_root_path)
     root_path = valpath if valpath else '{}/{}'.format(conf.val_root_path, conf.patch_info)
     valset = DatasetFolderFT(root_path, val_transform, None, conf.ft_width, conf.ft_height)
     val_loader = DataLoader(

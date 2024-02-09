@@ -17,6 +17,9 @@ from src.model_lib.MiniFASNet import MiniFASNetV1, MiniFASNetV2,MiniFASNetV1SE,M
 from src.data_io import transform as trans
 from src.utility import get_kernel, parse_model_name
 
+import pickle
+import torch
+
 MODEL_MAPPING = {
     'MiniFASNetV1': MiniFASNetV1,
     'MiniFASNetV2': MiniFASNetV2,
@@ -70,26 +73,6 @@ class Detection:
             bboxes.append(bbox)
         return bboxes
 
-    # def get_bboxes(self, imgs):
-    #     bboxes = []
-    #     for img in imgs:
-    #         height, width = img.shape[:2]
-    #         aspect_ratio = width / height
-    #         if img.shape[1] * img.shape[0] >= 192 * 192:
-    #             resized_img = cv2.resize(img, (int(192 * math.sqrt(aspect_ratio)), int(192 / math.sqrt(aspect_ratio))), interpolation=cv2.INTER_LINEAR)
-    #         else:
-    #             resized_img = img
-
-    #         blob = cv2.dnn.blobFromImage(resized_img, 1, mean=(104, 117, 123))
-    #         self.detector.setInput(blob, 'data')
-    #         out = self.detector.forward('detection_out').squeeze()
-    #         max_conf_index = np.argmax(out[:, 2])
-    #         left, top, right, bottom = out[max_conf_index, 3]*width, out[max_conf_index, 4]*height, \
-    #                                    out[max_conf_index, 5]*width, out[max_conf_index, 6]*height
-    #         bbox = [int(left), int(top), int(right-left+1), int(bottom-top+1)]
-    #         bboxes.append(bbox)
-    #     return bboxes
-
 class AntiSpoofPredict(Detection):
     def __init__(self, device_id):
         super(AntiSpoofPredict, self).__init__()
@@ -116,39 +99,81 @@ class AntiSpoofPredict(Detection):
             self.model.load_state_dict(new_state_dict)
         else:
             self.model.load_state_dict(state_dict)
-        return None
+        return self.model
 
-    def predict(self, img, model_path):
+    # # def predict(self, img, model_path):
+    # def predict(self, img, smodel):
+    #     test_transform = trans.Compose([
+    #         trans.ToTensor(),
+    #     ])
+    #     img = test_transform(img)
+    #     img = img.unsqueeze(0).to(self.device)
+        
+    #     # Assuming img is your PyTorch tensor
+    #     img_numpy = img.cpu().numpy()  # Convert PyTorch tensor to NumPy array
+    #     # Now you can save the NumPy array using pickle
+    #     with open('tensor_data.pkl', 'wb') as f:
+    #         pickle.dump(img_numpy, f)
+        
+    #     # self._load_model(model_path)
+    #     self.model = smodel
+    #     # self.model.eval()
+    #     with torch.no_grad():
+    #         result = self.model.forward(img)
+    #         result = F.softmax(result).cpu().numpy()
+    #     return result
+
+    # # def predict_batch(self, img_batch, model_path):
+    # def predict_batch(self, img_batch, smodel):
+    #     test_transform = trans.Compose([
+    #         trans.ToTensor(),
+    #     ])
+    #     img_batch = torch.stack([test_transform(img) for img in img_batch])
+    #     img_batch = img_batch.to(self.device)
+    #     # self._load_model(model_path)
+    #     self.model = smodel
+    #     # self.model.eval()
+    #     with torch.no_grad():
+    #         result = self.model.forward(img_batch)
+    #         result = F.softmax(result, dim=1).cpu().numpy()
+    #     return result
+
+    def preprocess_img(self, img):
         test_transform = trans.Compose([
             trans.ToTensor(),
         ])
         img = test_transform(img)
         img = img.unsqueeze(0).to(self.device)
-        self._load_model(model_path)
-        self.model.eval()
-        with torch.no_grad():
-            result = self.model.forward(img)
-            result = F.softmax(result).cpu().numpy()
-        return result
+        return img
 
-    def predict_batch(self, img_batch, model_path):
+    def preprocess_batch(self, img_batch):
         test_transform = trans.Compose([
             trans.ToTensor(),
         ])
         img_batch = torch.stack([test_transform(img) for img in img_batch])
         img_batch = img_batch.to(self.device)
-        self._load_model(model_path)
-        self.model.eval()
+        return img_batch
+
+    def predict(self, img, smodel):
+        # Preprocess the image
+        img = self.preprocess_img(img)
+
+        # Perform inference
+        self.model = smodel
+        with torch.no_grad():
+            result = self.model.forward(img)
+            result = F.softmax(result, dim=1).cpu().numpy()
+        return result
+
+    def predict_batch(self, img_batch, smodel):
+        # Preprocess the batch of images
+        img_batch = self.preprocess_batch(img_batch)
+
+        # Perform batch inference
+        self.model = smodel
         with torch.no_grad():
             result = self.model.forward(img_batch)
             result = F.softmax(result, dim=1).cpu().numpy()
         return result
-
-
-
-
-
-
-
 
 

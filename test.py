@@ -11,6 +11,7 @@ import numpy as np
 import argparse
 import warnings
 import time
+import torch
 
 from src.anti_spoof_predict import AntiSpoofPredict
 from src.generate_patches import CropImage
@@ -39,7 +40,18 @@ def test(image_name, model_dir, device_id):
     test_speed = 0
     # sum the prediction from single model's result
     print(model_dir)
+    all_models = dict()
     for model_name in os.listdir(model_dir):
+        model_path = os.path.join(model_dir, model_name)
+        smodel = model_test._load_model(model_path)
+        smodel.eval()
+
+        all_models[model_name] = smodel
+
+    for model_name in os.listdir(model_dir):
+        print(f"-->{model_name}")
+    # for model_name in all_models:
+        smodel = all_models[model_name]
         h_input, w_input, model_type, scale = parse_model_name(model_name)
         print(h_input, w_input, model_type, scale)
         param = {
@@ -53,10 +65,13 @@ def test(image_name, model_dir, device_id):
         if scale is None:
             param["crop"] = False
         img = image_cropper.crop(**param)
-        cv2.imwrite("img_cropped.jpg", img)
-        print(img.shape)
+        # print(img)
+        cv2.imwrite(f"img_cropped_{model_name[:-4]}.jpg", img)
+        print(f"Image shape = {img.shape}")
         start = time.time()
-        prediction += model_test.predict(img, os.path.join(model_dir, model_name))
+        # prediction += model_test.predict(img, os.path.join(model_dir, model_name))
+        prediction += model_test.predict(img, smodel)
+        print(f"tt = {time.time() - start}")
         test_speed += time.time()-start
         print(test_speed)
 
@@ -104,7 +119,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--image_name",
         type=str,
-        default="images/sample/image_F1.jpg",
+        default="images/sample/image_T1.jpg",
         help="image used to test")
     args = parser.parse_args()
     test(args.image_name, args.model_dir, args.device_id)
