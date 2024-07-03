@@ -181,3 +181,27 @@ class AntiSpoofPredict(Detection):
         dummy_input = torch.randn(*input_size).to(self.device)
         torch.onnx.export(self.model, dummy_input, onnx_path, export_params=True, opset_version=11,
                           do_constant_folding=True, input_names=['input'], output_names=['output'])
+
+
+    def export_to_onnx_dynamic(self, model_path, onnx_path, input_size=(1, 3, 224, 224)):
+        self._load_model(model_path)
+        
+        # Modify the input size to have a dynamic batch dimension
+        dynamic_input_size = (None, *input_size[1:])
+        dummy_input = torch.randn(1, *input_size[1:]).to(self.device)
+        
+        torch.onnx.export(
+            self.model, 
+            dummy_input, 
+            onnx_path, 
+            export_params=True, 
+            opset_version=11,
+            do_constant_folding=True, 
+            input_names=['input'], 
+            output_names=['output'],
+            dynamic_axes={
+                'input': {0: 'batch_size'},  # Make batch size dynamic
+                'output': {0: 'batch_size'}
+            }
+        )
+        print(f"Model exported to ONNX format at {onnx_path}")
