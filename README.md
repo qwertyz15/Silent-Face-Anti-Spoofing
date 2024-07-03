@@ -128,6 +128,11 @@ This repository contains scripts for testing and deploying models for spoof dete
   - `--model_threshold`: Liveness threshold (default: 0.75)
   - `--voting_threshold`: Voting threshold (default: 0.8)
 
+### ONNX Model Export
+- Export the ONNX model
+  ```bash
+  python export.py --model_path path_to_model.pth --onnx_path output_model.onnx --device_id 0
+  ```
 ### ONNX Model Deployment
 
 #### `flask_app_onnx.py`
