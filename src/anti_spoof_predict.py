@@ -176,7 +176,7 @@ class AntiSpoofPredict(Detection):
             result = F.softmax(result, dim=1).cpu().numpy()
         return result
 
-    def export_to_onnx(self, model_path, onnx_path, input_size=(1, 3, 224, 224)):
+    def export_to_onnx(self, model_path, onnx_path, input_size=(1, 3, 80, 80)):
         self._load_model(model_path)
         dummy_input = torch.randn(*input_size).to(self.device)
         torch.onnx.export(self.model, dummy_input, onnx_path, export_params=True, opset_version=11,
