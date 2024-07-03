@@ -14,6 +14,7 @@ def export_model(model_path, onnx_path, device_id):
     anti_spoof = AntiSpoofPredict(device_id=device_id)
     input_size = (1, 3, 80, 80)  # Update input size if necessary
     anti_spoof.export_to_onnx(model_path, onnx_path, input_size)
+    anti_spoof.export_to_onnx_dynamic(model_path, onnx_path, input_size)
     print(f"Model exported to ONNX format at {onnx_path}")
 
 if __name__ == "__main__":
