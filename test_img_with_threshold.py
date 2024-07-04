@@ -17,7 +17,7 @@ from src.generate_patches import CropImage
 from src.utility import parse_model_name
 warnings.filterwarnings('ignore')
 
-# 因为安卓端APK获取的视频流宽高比为3:4,为了与之一致，所以将宽高比限制为3:4
+# Function to check image dimensions
 def check_image(image):
     height, width, channel = image.shape
     if width/height != 3/4:
@@ -26,20 +26,36 @@ def check_image(image):
     else:
         return True
 
-
+# Function to perform the anti-spoofing test
 def test(image_name, model_dir, device_id, threshold):
     model_test = AntiSpoofPredict(device_id)
     image_cropper = CropImage()
     image = cv2.imread(image_name)
+    
+    # Check if image dimensions are appropriate
     result = check_image(image)
-    if result is False:
+    if not result:
         return
+    
+    # Get bounding box for the face in the image
     image_bbox = model_test.get_bbox(image)
+    
+    # Initialize variables for prediction and time tracking
     prediction = np.zeros((1, 3))
     test_speed = 0
-    # sum the prediction from single model's result
+    
+    # Iterate through each model in the model directory
     for model_name in os.listdir(model_dir):
+        model_path = os.path.join(model_dir, model_name)
+        
+        # Load the model
+        smodel = model_test._load_model(model_path)
+        smodel.eval()  # Ensure model is in evaluation mode
+        
+        # Parse model details
         h_input, w_input, model_type, scale = parse_model_name(model_name)
+        
+        # Prepare parameters for cropping the image
         param = {
             "org_img": image,
             "bbox": image_bbox,
@@ -50,30 +66,36 @@ def test(image_name, model_dir, device_id, threshold):
         }
         if scale is None:
             param["crop"] = False
-        img = image_cropper.crop(**param)
-        start = time.time()
-        prediction += model_test.predict(img, os.path.join(model_dir, model_name))
-        test_speed += time.time()-start
-
-    # draw result of prediction
-    label = np.argmax(prediction)
-    value = prediction[0][label]/2
-    liveness_score = prediction[0][1]/2
-    
-    if(liveness_score >= threshold):
-        label = 1
-    else:
-        label = 0
         
+        # Crop the image
+        img = image_cropper.crop(**param)
+        
+        # Perform prediction using the loaded model
+        start = time.time()
+        prediction += model_test.predict(img, smodel)
+        test_speed += time.time() - start
+    
+    # Determine the final prediction label based on threshold
+    liveness_score = prediction[0][1] / 2
+    if liveness_score >= threshold:
+        label = 1  # Real Face
+    else:
+        label = 0  # Fake Face
+    
+    # Prepare result text and color for annotating the image
     if label == 1:
         print("Image '{}' is Real Face. LivenessScore: {:.2f}.".format(image_name, liveness_score))
         result_text = "RealFace | LivenessScore: {:.2f}".format(liveness_score)
-        color = (255, 0, 0)
+        color = (255, 0, 0)  # Red color
     else:
         print("Image '{}' is Fake Face. LivenessScore: {:.2f}.".format(image_name, liveness_score))
         result_text = "FakeFace | LivenessScore: {:.2f}".format(liveness_score)
-        color = (0, 0, 255)
+        color = (0, 0, 255)  # Blue color
+    
+    # Print prediction cost
     print("Prediction cost {:.2f} s".format(test_speed))
+    
+    # Draw bounding box and annotate the image with result
     cv2.rectangle(
         image,
         (image_bbox[0], image_bbox[1]),
@@ -83,19 +105,22 @@ def test(image_name, model_dir, device_id, threshold):
         image,
         result_text,
         (image_bbox[0], image_bbox[1] - 5),
-        cv2.FONT_HERSHEY_COMPLEX, 0.5*image.shape[0]/1024, color)
-
+        cv2.FONT_HERSHEY_COMPLEX, 0.5 * image.shape[0] / 1024, color)
+    
+    # Save the annotated image
     format_ = os.path.splitext(image_name)[-1]
     result_image_name = image_name.replace(format_, "_result" + format_)
     cv2.imwrite(result_image_name, image)
 
-
+# Command-line argument parsing
 if __name__ == "__main__":
     def check_zero_to_one(value):
         fvalue = float(value)
         if fvalue <= 0 or fvalue >= 1:
             raise argparse.ArgumentTypeError("%s is an invalid value" % value)
         return fvalue
+    
+    # Define argument parser
     desc = "test"
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument(
@@ -111,12 +136,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--image_name", "-i",
         type=str,
-        default="images/sample/image_F1.jpg",
+        default="images/sample/image_T1.jpg",
         help="image used to test")
     parser.add_argument(
         "--threshold", "-t",
         type=check_zero_to_one,
         default=0.6,
         help="liveness threshold")
+    
+    # Parse command-line arguments
     args = parser.parse_args()
+    
+    # Call the test function with parsed arguments
     test(args.image_name, args.model_dir, args.device_id, args.threshold)
