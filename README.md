@@ -52,6 +52,18 @@ This repository contains scripts for testing and deploying models for spoof dete
   - `--image_folder`: Path to the folder containing images for testing (required)
   - `--batch_size`: Batch size for testing (default: 1024)
 
+#### `test_batch_infer_with_threshold.py`
+
+- Perform batch testing on a folder containing images with threshold.
+  ```bash
+  python3 test_batch_infer_with_threshold.py --device_id <gpu_id> --model_dir <model_directory> --image_folder <image_folder_path> --batch_size <batch_size> --model_threshold <threshold_value>
+  ```
+  - `--device_id`: GPU ID to use (default: 0)
+  - `--model_dir`: Path to the directory containing the PyTorch model (default: ./resources/anti_spoof_models)
+  - `--image_folder`: Path to the folder containing images for testing (required)
+  - `--batch_size`: Batch size for testing (default: 1024)
+  - `--model_threshold`: Liveness threshold value (0 to 1) (default: 0.9)
+
 #### `test_video_with_score.py`
 
 - Test a video file for spoof detection with a custom liveness threshold.
